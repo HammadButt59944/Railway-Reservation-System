@@ -1,0 +1,320 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+const int totalseats = 10; 
+
+void beginsystem();
+void booktickets();
+void canceltickets();
+void displaybooked();
+void displaywaiting(); 
+bool login();
+void addtowaitinglist();
+
+
+struct Ticket {
+    string passengername;
+    int seatnum;
+};
+
+
+struct WaitingNode {
+    string passengername;
+    char classtype;  // 'B' or 'E'
+    WaitingNode* next;
+};
+
+struct Booking {
+    string passengername;
+    char classtype;
+};
+
+Ticket economyTickets[totalseats];
+Ticket businessTickets[totalseats];
+bool isEconomySeatBooked[totalseats];
+bool businessseatsbooked[totalseats];
+int economyBookedCount = 0;
+int businessbookedcont = 0;
+
+WaitingNode* waitingListHead = NULL;
+Booking bookingQueue[totalseats]; 
+int queueFront = 0;
+int queueRear = -1;
+
+bool login() {
+    string useradmin, password;
+    const string Useradmin = "hammad";
+    const string Password = "1111";
+
+    cout << "Enter admin: ";
+    cin >> useradmin;
+    cout << "Enter Password: ";
+    cin >> password;
+
+    if (Useradmin == useradmin && Password == password) {
+        cout << "			Access granted" << endl;
+        cout << "Welcome to Ticket reservation system." << endl;
+        return true;
+    } else {
+        cout << "Invalid Choice, try later.";
+        return false;
+    }
+}
+
+void booktickets() {
+    char classtype;
+    cout << "Choose the class in which you want to book the seat." << endl;
+    cout << "Enter 'B' for Business class ." << endl;
+    cout << "Enter 'E' for Economy class ." << endl;
+    cin >> classtype;
+
+    if ((classtype != 'B') && (classtype != 'E')) {
+        cout << "Invalid class type. Please try again." << endl;
+        return;
+    }
+
+    Ticket* ticketstorage;
+    bool* seatbookedstorage;
+    int* bookedCountPtr;
+
+    if (classtype == 'B') {
+        ticketstorage = businessTickets;
+        seatbookedstorage = businessseatsbooked;
+        bookedCountPtr = &businessbookedcont;
+    } else {
+        ticketstorage = economyTickets;
+        seatbookedstorage = isEconomySeatBooked;
+        bookedCountPtr = &economyBookedCount;
+    }
+
+    if (*bookedCountPtr >= totalseats) {
+        cout << "All seats in the selected class are booked. Adding to waiting list." << endl;
+        addtowaitinglist();
+        return;
+    }
+
+    string name;
+    int seatnum;
+
+    cout << "Enter passenger name: ";
+    cin >> name;
+    cout << "Enter seat number (1-" << totalseats << "): ";
+    cin >> seatnum;
+
+    if (seatnum < 1 || seatnum > totalseats) {
+        cout << "Invalid seat number. Please try again." << endl;
+        return;
+    }
+
+    if (seatbookedstorage[seatnum - 1]) {
+        cout << "Seat already booked. Please choose a different seat." << endl;
+        return;
+    }
+
+    ticketstorage[*bookedCountPtr].passengername = name;
+    ticketstorage[*bookedCountPtr].seatnum = seatnum;
+    seatbookedstorage[seatnum - 1] = true;
+    (*bookedCountPtr)++;
+
+    cout << "Your ticket is booked successfully! You booked a " << (classtype == 'B' ? "Business" : "Economy") << " class ticket." << endl;
+    cout << "Thank you for using our service." << endl;
+}
+
+void canceltickets() {
+    int seatnum;
+    cout << "Enter seat number to cancel: ";
+    cin >> seatnum;
+
+    if (seatnum < 1 || seatnum > totalseats) {
+        cout << "Invalid seat number. Please try again." << endl;
+        return;
+    }
+
+    Ticket* ticketstorage;
+    bool* seatbookedstorage;
+    int* bookedCountPtr;
+
+    if (businessseatsbooked[seatnum - 1]) {
+        ticketstorage = businessTickets;
+        seatbookedstorage = businessseatsbooked;
+        bookedCountPtr = &businessbookedcont;
+    } else if (isEconomySeatBooked[seatnum - 1]) {
+        ticketstorage = economyTickets;
+        seatbookedstorage = isEconomySeatBooked;
+        bookedCountPtr = &economyBookedCount;
+    } else {
+        cout << "Invalid or unbooked seat number. Please try again." << endl;
+        return;
+    }
+
+    for (int i = 0; i < *bookedCountPtr; i++) {
+        if (ticketstorage[i].seatnum == seatnum) {
+            seatbookedstorage[seatnum - 1] = false;
+            for (int j = i; j < *bookedCountPtr - 1; j++) {
+                ticketstorage[j] = ticketstorage[j + 1];
+            }
+            (*bookedCountPtr)--;
+
+            cout << "Ticket cancelled successfully!" << endl;
+            if (waitingListHead != NULL) {
+                WaitingNode* temp = waitingListHead;
+                waitingListHead = waitingListHead->next;
+                cout << "The person has been removed from the first position in waiting list after ticket cancellation." << endl;
+                delete temp;
+            }
+            return;
+        }
+    }
+
+    cout << "Invalid or unbooked seat number. Please try again." << endl;
+}
+
+void displaybooked() {
+    bool isEmpty = true;
+
+    cout << "Booked Tickets:" << endl;
+
+    for (int i = 0; i < businessbookedcont; i++) {
+        cout << "Business Class - Seat Number: " << businessTickets[i].seatnum << ", Passenger Name: " << businessTickets[i].passengername << endl;
+        isEmpty = false;
+    }
+    for (int i = 0; i < economyBookedCount; i++) {
+        cout << "Economy Class - Seat Number: " << economyTickets[i].seatnum << ", Passenger Name: " << economyTickets[i].passengername << endl;
+        isEmpty = false;
+    }
+
+    if (isEmpty) {
+        cout << "No tickets booked." << endl;
+    }
+}
+
+void displaywaiting() {
+    if (waitingListHead == NULL) {
+        cout << "Waiting list is empty." << endl;
+        return;
+    }
+
+    cout << "People in the waiting list:" << endl;
+    WaitingNode* temp = waitingListHead;
+    int position = 1;
+    while (temp != NULL) {
+        cout << position << ". Name: " << temp->passengername << ", Class: "
+             << (temp->classtype == 'B' ? "Business" : "Economy") << endl;
+        temp = temp->next;
+        position++;
+    }
+}
+
+class timings {
+private:
+    string monday = "9:00 to 12:00";
+
+public:
+    void updatetimings() {
+        string newTime;
+        cout << "Enter new Monday timings: ";
+        cin.ignore(); // To consume newline before getline
+        getline(cin, newTime);
+        monday = newTime;
+        cout << "Timings updated successfully." << endl;
+    }
+
+    void checktimings() {
+        cout << "\t\tBusiness Class\t\tEconomy Class\n";
+        cout << "Monday - " << monday << "\t\t12:30 to 3:00\n";
+        cout << "Tuesday - 10:00 to 1:00\t\t12:30 to 4:00" << endl;
+    }
+};
+
+int main() {
+    timings t;
+    int choice;
+    if (!login()) {
+        return 1;
+    }
+    beginsystem();
+
+    do {
+        cout << endl << "					Railway Reservation System						" << endl;
+        cout << "Enter '1' to Book Ticket." << endl;
+        cout << "Enter '2' to Cancel Ticket." << endl;
+        cout << "Enter '3' to Display Booked Tickets." << endl;
+        cout << "Enter '4' to Display Waiting List." << endl;
+        cout << "Enter '5' to check timings or update timings." << endl;
+        cout << "Enter '6' to Exit." << endl;
+        cout << "*********************************************" << endl;
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1:
+                booktickets();
+                break;
+            case 2:
+                canceltickets();
+                break;
+            case 3:
+                displaybooked();
+                break;
+            case 4:
+                displaywaiting();
+                break;
+            case 5:
+                int timeChoice;
+                cout << "Enter 'A' to Check Timings.\nEnter 'B' to Update Timings.\nEnter choice: ";
+                cin >> timeChoice;
+                if (timeChoice == 1)
+                    t.checktimings();
+                else if (timeChoice == 2)
+                    t.updatetimings();
+                else
+                    cout << "Invalid choice.\n";
+                break;
+            case 6:
+                cout << "Exiting..." << endl;
+                exit(0);
+            default:
+                cout << "Invalid choice. Please try again." << endl;
+        }
+    } while (choice != 6);
+
+    return 0;
+}
+
+void beginsystem() {
+    for (int i = 0; i < totalseats; i++) {
+        isEconomySeatBooked[i] = false;
+        businessseatsbooked[i] = false;
+    }
+    waitingListHead = NULL;
+    queueFront = 0;
+    queueRear = -1;
+}
+
+void addtowaitinglist() {
+    string name;
+    char classtype;
+
+    cout << "Enter name for waiting list: ";
+    cin >> name;
+    cout << "Enter class type ('B' for Business, 'E' for Economy): ";
+    cin >> classtype;
+
+    WaitingNode* newNode = new WaitingNode;
+    newNode->passengername = name;
+    newNode->classtype = classtype;
+    newNode->next = NULL;
+
+    if (waitingListHead == NULL) {
+        waitingListHead = newNode;
+    } else {
+        WaitingNode* temp = waitingListHead;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = newNode;
+    }
+
+    cout << "Added to waiting list." << endl;
+}
